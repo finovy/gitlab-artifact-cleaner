@@ -19,25 +19,27 @@ import os.path
 import re
 import sys
 from typing import Optional
-from gitlab_config import base_url, access_token, filter_group, dry_run
+from gitlab_config import base_url, access_token, filter_group, dry_run, expires_day
 
 import requests
 
 now = datetime.datetime.now()
-delete_everything_older_than = now - datetime.timedelta(weeks=4)
+delete_everything_older_than = now - datetime.timedelta(days=expires_day)
 
 
 def fetch_projects(group=None):
     logging.debug('start fetching list of projects')
     list_of_projects = []
 
-    for project_batch in make_api_call('/projects', {'simple': 'true', 'archived': 'false', 'per_page': 100}, True):
-        projects_list = json.loads(project_batch)
+    # get project by group
+    for res in make_api_call(f'/groups/{group}/projects', {'simple': 'true', 'archived': 'false', 'per_page': 100}):
+        projects_list = json.loads(res)
         for p in projects_list:
-            list_of_projects.append({
-                'id': p['id'],
-                'name': p['path_with_namespace'],
-            })
+            if p['id'] == 61:
+                list_of_projects.append({
+                    'id': p['id'],
+                    'name': p['path_with_namespace'],
+                })
 
     return list_of_projects
 
@@ -61,7 +63,7 @@ def fetch_jobs(project_id: str):
 date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
-def delete_artifacts_of_project(target_project, dry_run):
+def delete_artifacts_of_project(target_project):
     deleted_bytes = 0
 
     total_num_of_jobs = len(target_project['jobs'])
@@ -77,17 +79,19 @@ def delete_artifacts_of_project(target_project, dry_run):
         if date < delete_everything_older_than:
             deleted_bytes += functools.reduce(
                 lambda total, artifact: total + artifact['size'] if artifact['size'] else 0, job['artifacts'], 0)
+        else:
+            continue
 
         if not dry_run:
-            logging.info(f"deleting job artifacts of {target_project['project_name']}: [{i}/{total_num_of_jobs}]")
             try:
-                make_api_call(f'/projects/{job["project_id"]}/jobs/{job["id"]}/artifacts', {}, method='delete',
-                              all_pages=False)
+                make_api_call(f'/projects/{job["project_id"]}/jobs/{job["id"]}/artifacts', {}, method='delete', all_pages=False)
+                logging.info(f"deleting job artifacts of {target_project['project_name']}: [{i}/{total_num_of_jobs}], artifacts date: {date}")
             except RuntimeError:
                 pass
 
     logging.info(f"deleted {format_bytes(deleted_bytes)} for project {target_project['project_name']}")
     return deleted_bytes
+
 
 def build_projects_jobs_and_artifacts_list(list_of_projects):
     num_of_projects = len(list_of_projects)
@@ -99,6 +103,9 @@ def build_projects_jobs_and_artifacts_list(list_of_projects):
         i += 1
         logging.info(f'fetching {project["name"]} [{i}/{num_of_projects}]')
         jobs = fetch_jobs(project['id'])
+        """
+        {'id': 21151, 'project_id': 61, 'artifacts': [{'file_type': 'archive', 'size': 491442, 'filename': 'artifacts.zip', 'file_format': 'zip'}
+        """
         total_size = functools.reduce(
             lambda total, job: total + (
                 functools.reduce(lambda sub_total, artifact: sub_total + artifact['size'] if artifact['size'] else 0,
@@ -117,7 +124,6 @@ def build_projects_jobs_and_artifacts_list(list_of_projects):
 
 def make_api_call(path: str, params: dict, all_pages: bool = True, method: str = 'get'):
     api_url = base_url + '/api/v4'
-
     params_for_request = f"?access_token={access_token}"
     for key, value in params.items():
         params_for_request += f"&{key}={value}"
@@ -133,11 +139,9 @@ def make_api_call(path: str, params: dict, all_pages: bool = True, method: str =
             result = requests.delete(url)
         else:
             raise RuntimeError(f"unsupported method '{method}'")
-
         if result.status_code >= 400:
             logging.error(f'API call failed! Got response code {result.status_code} when tried to call {url}')
             break
-
         results.append(result.content)
         url = get_next_from_link_header(result.headers.get('Link')) if all_pages else None
 
@@ -178,8 +182,6 @@ def format_bytes(bytes_to_format):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 
-    projects_fil = []
-
     if not access_token:
         logging.error('access_token must be set!')
         sys.exit(1)
@@ -188,18 +190,16 @@ if __name__ == '__main__':
         logging.error('base_url must be set!')
         sys.exit(1)
 
-    if not os.path.exists('projects.json'):
-        projects = fetch_projects()
-        fp = open('projects.json', 'w')
-        json.dump(projects, fp)
-        fp.close()
-    else:
-        projects = json.load(open('projects.json', 'r'))
+    # fetch projects
+    projects = fetch_projects(group=filter_group)
 
-    for i in projects:
-        if filter_group not in [None, ""]:
-            if filter_group in i['name']:
-                projects_fil.append(i)
+    # fetch artifacts
+    jobs_and_artifacts_list = build_projects_jobs_and_artifacts_list(projects)
 
-    for project in projects_fil:
-        delete_artifacts_of_project(project, dry_run=dry_run)
+    for entry in jobs_and_artifacts_list:
+        logging.info(f"{entry['project_name']}: total_size  \t{format_bytes(entry['total_size'])}")
+
+    total_deleted = 0
+    for project_summery in jobs_and_artifacts_list:
+        total_deleted += delete_artifacts_of_project(project_summery)
+    logging.info(f"deleted a total of {format_bytes(total_deleted)}")
