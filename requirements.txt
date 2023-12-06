@@ -1,1 +1,3 @@
+--index-url https://nexus-gateway.fpdev.tech/repository/pypi-public/simple
+
 requests==2.31.0

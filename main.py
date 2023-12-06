@@ -61,17 +61,33 @@ def fetch_jobs(project_id: str):
 date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
-def delete_artifacts_of_project(target_project: dict, dry_run: bool = True):
-    if target_project["id"] != 1216:
-        return
-    if not dry_run:
-        try:
-            res = make_api_call(f'/projects/{target_project["id"]}/artifacts', {}, method='delete',
-                                all_pages=False)
-            logging.info(f"deleting job artifacts of {target_project['name']}, response: {res}")
-        except RuntimeError as err:
-            print(err)
-            pass
+def delete_artifacts_of_project(target_project, dry_run):
+    deleted_bytes = 0
+
+    total_num_of_jobs = len(target_project['jobs'])
+    i = 0
+
+    for job in target_project['jobs']:
+        i += 1
+
+        if len(job['artifacts']) == 0:
+            continue
+
+        date = datetime.datetime.strptime(job['date'], date_format)
+        if date < delete_everything_older_than:
+            deleted_bytes += functools.reduce(
+                lambda total, artifact: total + artifact['size'] if artifact['size'] else 0, job['artifacts'], 0)
+
+        if not dry_run:
+            logging.info(f"deleting job artifacts of {target_project['project_name']}: [{i}/{total_num_of_jobs}]")
+            try:
+                make_api_call(f'/projects/{job["project_id"]}/jobs/{job["id"]}/artifacts', {}, method='delete',
+                              all_pages=False)
+            except RuntimeError:
+                pass
+
+    logging.info(f"deleted {format_bytes(deleted_bytes)} for project {target_project['project_name']}")
+    return deleted_bytes
 
 def build_projects_jobs_and_artifacts_list(list_of_projects):
     num_of_projects = len(list_of_projects)
