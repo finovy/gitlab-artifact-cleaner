@@ -5,6 +5,4 @@ ADD . .
 
 RUN pip3 install -U -r requirements.txt
 
-EXPOSE 8000
-
-CMD ["python","-m","main.py"]
+CMD ["python3","main.py"]
