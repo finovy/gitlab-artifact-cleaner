@@ -26,7 +26,7 @@ filter_group = os.getenv('GROUP', '')
 # filter_id = os.getenv('PROJECT_ID', '')
 
 # set expires_day
-expires_day = os.getenv('EXPIRES', 3)
+expires_day = int(os.getenv('EXPIRES', 3))
 
 # dry_run
 dry_run = bool(int(os.getenv('DRY_RUN', 0)) == 1)
