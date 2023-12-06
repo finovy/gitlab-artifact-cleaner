@@ -19,8 +19,11 @@ base_url = os.getenv('BASE_URL', '')
 # gitlab access_token
 access_token = os.getenv('ACCESS_TOKEN', '')
 
-# clean up dest group project
-group = os.getenv('GROUP', '')
+# clean up dest filter_group project
+filter_group = os.getenv('GROUP', '')
+
+# clean up dest filter_id project
+filter_id = os.getenv('PROJECT_ID', '')
 
 # dry_run
 dry_run = bool(int(os.getenv('DRY_RUN', 0)) == 1)

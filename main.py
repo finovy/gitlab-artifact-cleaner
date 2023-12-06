@@ -19,7 +19,7 @@ import os.path
 import re
 import sys
 from typing import Optional
-from gitlab_config import base_url, access_token, group, dry_run
+from gitlab_config import base_url, access_token, filter_group, dry_run
 
 import requests
 
@@ -181,23 +181,9 @@ if __name__ == '__main__':
         projects = json.load(open('projects.json', 'r'))
 
     for i in projects:
-        if group in i['name']:
-            projects_fil.append(i)
-
-    # if not os.path.exists('results.json'):
-    #     jobs_and_artifacts_list = build_projects_jobs_and_artifacts_list(projects_fil)
-    #
-    #     fp = open('results.json', 'w')
-    #     json.dump(jobs_and_artifacts_list, fp)
-    #     fp.close()
-    #
-    # else:
-    #     fp = open('results.json')
-    #     jobs_and_artifacts_list = json.load(fp)
-    #     fp.close()
-    #
-    # for entry in jobs_and_artifacts_list:
-    #     logging.info(f"{entry['project_name']}: \t{format_bytes(entry['total_size'])}")
+        if filter_group not in [None, ""]:
+            if filter_group in i['name']:
+                projects_fil.append(i)
 
     for project in projects_fil:
         delete_artifacts_of_project(project, dry_run=dry_run)
