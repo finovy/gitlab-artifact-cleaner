@@ -7,14 +7,14 @@ A small tool for cleaning Gitlab Artifacts
 ### How to use this image
 
 ```
-docker dun finovy/gitlab-artifact-cleaner
+docker run finovy/gitlab-artifact-cleaner
 ```
 
 ### Environment Variables
 
 #### `BASE_URL`
 
-The URL address of gitlab, for example https://git.finovy.cn/
+The URL address of gitlab, for example https://git.yoursite.com
 
 #### `ACCESS_TOKEN`
 
