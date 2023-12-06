@@ -201,4 +201,5 @@ if __name__ == '__main__':
     total_deleted = 0
     for project_summery in jobs_and_artifacts_list:
         total_deleted += delete_artifacts_of_project(project_summery)
-    logging.info(f"deleted a total of {format_bytes(total_deleted)}")
+
+    logging.info(f"artifacts cleanup finished！deleted a total of {format_bytes(total_deleted)}")
