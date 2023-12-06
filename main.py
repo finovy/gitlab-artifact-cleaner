@@ -35,11 +35,10 @@ def fetch_projects(group=None):
     for res in make_api_call(f'/groups/{group}/projects', {'simple': 'true', 'archived': 'false', 'per_page': 100}):
         projects_list = json.loads(res)
         for p in projects_list:
-            if p['id'] == 61:
-                list_of_projects.append({
-                    'id': p['id'],
-                    'name': p['path_with_namespace'],
-                })
+            list_of_projects.append({
+                'id': p['id'],
+                'name': p['path_with_namespace'],
+            })
 
     return list_of_projects
 

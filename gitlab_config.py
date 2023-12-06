@@ -23,7 +23,7 @@ access_token = os.getenv('ACCESS_TOKEN', '')
 filter_group = os.getenv('GROUP', '')
 
 # clean up dest filter_id project
-filter_id = os.getenv('PROJECT_ID', '')
+# filter_id = os.getenv('PROJECT_ID', '')
 
 # set expires_day
 expires_day = os.getenv('EXPIRES', 3)
